@@ -1,11 +1,10 @@
 # Fabric Helm Chart
-![Version: 1.2.32](https://img.shields.io/badge/Version-1.2.32-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 8.3](https://img.shields.io/badge/AppVersion-8.3-informational?style=flat-square)
+![Version: 1.2.33](https://img.shields.io/badge/Version-1.2.33-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 8.3](https://img.shields.io/badge/AppVersion-8.3-informational?style=flat-square)
 
 ## Overview
-The Fabric Helm chart provides a robust, production-ready deployment of the Fabric application on Kubernetes clusters. This chart is designed for flexibility, security, and ease of use, supporting a wide range of configuration options to suit enterprise and cloud-native environments. It is suitable for both development and production deployments, and is maintained with best practices for reliability and scalability.
+The Fabric Helm chart provides a deployment of the Fabric application on Kubernetes clusters. This chart is designed for flexibility, supporting a wide range of configuration options to suit enterprise and cloud-native environments. It is suitable for both development and production deployments.
 
 ## Table of Contents
-- [Features](#features)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
   - [1. Add the Helm Repository (Remote Installation)](#1-add-the-helm-repository-remote-installation)
@@ -25,83 +24,72 @@ The Fabric Helm chart provides a robust, production-ready deployment of the Fabr
   - [Ingress Routing Types](#ingress-routing-types)
     - [1. Path-Based Routing (No Wildcard TLS - Recommended)](#1-path-based-routing-no-wildcard-tls---recommended)
     - [2. Domain-Based Routing (Wildcard TLS)](#2-domain-based-routing-wildcard-tls)
+- [OpenShift Support](#openshift-support)
+  - [OpenShift Route](#openshift-route)
 - [Storage (Persistence)](#storage-persistence)
 - [Environment Variables](#environment-variables)
 - [Troubleshooting](#troubleshooting)
 - [Support](#support)
 
 
-
-## Features
-- **Configurable Deployments:** Easily customize replicas, resources, and environment variables.
-- **Production-Ready Defaults:** Secure and scalable out-of-the-box settings.
-- **Global Labels and Annotations:** Apply consistent labels and annotations across all Kubernetes resources for better organization, monitoring, and compliance.
-- **Support for Ingress:** Integrate with popular ingress controllers for external access, including:
-  - **NGINX Ingress Controller** (default, fully supported)
-  - **AWS ALB Ingress Controller** (annotation changes may be required).
-  - **Azure Application Gateway Ingress Controller (AGIC)** (annotation changes may be required)
-  - **GCE Ingress Controller** (annotation changes may be required)
-  
-  > Note: Some ingress controllers may require minor changes to annotations or configuration. Refer to the documentation of your chosen ingress controller for details.
-- **Persistent Storage:** Optional persistent volume claims for data durability.
-- **Customizable Service Exposure:** Choose between ClusterIP, NodePort, or LoadBalancer.
-- **Health Checks:** Liveness, readiness and startup probes for robust operation.
-- **Resource Management:** Fine-grained control over CPU and memory requests/limits.
-- **Secrets Management:** Integrate with Kubernetes secrets for sensitive data.
-- **Extensible:** Easily override or extend with your own values files.
-
 ## Prerequisites
-- Kubernetes 1.27+
+- Kubernetes 1.30+ **or** OpenShift 4.12+
 - Helm 3.0+
-- Ingress controller (e.g., NGINX)
+- Ingress controller (e.g., NGINX) — not required on OpenShift (uses Routes)
 
 ## Installation
-### 1. Add the Helm Repository (Remote Installation)
 
+> **Recommended:** Review the [values.yaml](values.yaml) file and use a custom values file (`-f my-values.yaml`) for your installation. While individual parameters can be passed via `--set`, using a values file provides better visibility and reproducibility.
+> **Recommended:** parameters include `namespace.name`, `container.image.url`, and `storage.class`. Ensure these are set either in your values file or via `--set` flags.
+
+### 1. Add the Helm Repository
 ```sh
-helm repo add fabric https://nexus.share.cloud.k2view.com/repository/fabric/
+helm repo add fabric https://helm.share.cloud.k2view.com/fabric/
 helm repo update
 ```
 
-### 2. Install the Chart from Remote Repository
+### 2. Install the Chart
 
+**Using a values file (recommended):**
 ```sh
+# From remote repository
 helm install SPACE_NAME fabric/fabric \
   --namespace SPACE_NAME \
+  -f my-values.yaml \
   --create-namespace
-```
 
-### 3. Install the Chart Locally (After Cloning the Repo)
-
-If you have cloned this repository, you can install the chart directly from the local directory:
-
-```sh
-cd helm/charts/fabric
+# From local clone
 helm install SPACE_NAME . \
   --namespace SPACE_NAME \
+  -f my-values.yaml \
   --create-namespace
 ```
 
-### 4. Custom Installation
-You can override default values using a custom `values.yaml` file:
-
+**Using `--set` flags (quick start):**
 ```sh
-# For remote installation
-helm install SPACE_NAME fabric/fabric -f my-values.yaml
-# For local installation
-helm install SPACE_NAME . -f my-values.yaml
+# From remote repository
+helm install SPACE_NAME fabric/fabric \
+  --namespace SPACE_NAME \
+  --set container.image.url=YOUR_IMAGE_URL \
+  --set storage.class=YOUR_STORAGE_CLASS \
+  --create-namespace
+
+# From local clone
+helm install SPACE_NAME . \
+  --namespace SPACE_NAME \
+  --set container.image.url=YOUR_IMAGE_URL \
+  --set storage.class=YOUR_STORAGE_CLASS \
+  --create-namespace
 ```
 
 ## Upgrading
 To upgrade an existing release:
-
 ```sh
 helm upgrade SPACE_NAME fabric/fabric -f my-values.yaml
 ```
 
 ## Uninstallation
 To uninstall the release:
-
 ```sh
 helm uninstall SPACE_NAME
 ```
@@ -111,6 +99,7 @@ The following table lists the main configurable parameters of the Fabric chart a
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
+| `openshift` | bool | `false` | Set to `true` to enable OpenShift mode (Route instead of Ingress, restricted SCC security context) |
 | `labels` | array | `[]` | Global labels applied to all resources |
 | `annotations` | array | `[]` | Global annotations applied to all resources |
 | `namespace.create` | bool | `false` | Whether to create the namespace |
@@ -124,6 +113,7 @@ The following table lists the main configurable parameters of the Fabric chart a
 | `serviceAccount.project_id` | string | `""` | GCP project ID |
 | `serviceAccount.cluster_name` | string | `""` | Cluster name |
 | `serviceAccount.azure_client_id` | string | `""` | Azure Managed Identity client ID |
+| `serviceAccount.automountServiceAccountToken` | bool | `""` | Set to `false` to explicitly disable automounting the service account token. When not set, Kubernetes defaults to `true` |
 | `serviceAccount.annotations` | array | `[]` | Resource-specific annotations for service account |
 | `container.replicas` | int | `1` | Number of Fabric pods |
 | `container.annotationsList` | list | `[{{name: description, value: Fabric on Kubernetes}}]` | List of pod annotations |
@@ -177,13 +167,24 @@ The following table lists the main configurable parameters of the Fabric chart a
 | `ingress.cert_manager.cluster_issuer` | string | `""` | cert-manager ClusterIssuer name |
 | `ingress.custom_annotations.enabled` | bool | `false` | Enable custom ingress annotations |
 | `ingress.custom_annotations.annotations` | list | See `values.yaml` | Custom ingress annotations |
+| `route.enabled` | bool | `true` | Create OpenShift Route (only when `openshift: true`) |
+| `route.host` | string | `""` | Route hostname; falls back to `ingress.host`/`ingress.subdomain` logic when empty |
+| `route.path` | string | `""` | Route path; falls back to `ingress.path` logic when empty |
+| `route.tls.enabled` | bool | `true` | Enable TLS on the Route |
+| `route.tls.termination` | string | `edge` | TLS termination mode: `edge`, `passthrough`, or `reencrypt` |
+| `route.tls.insecureEdgeTerminationPolicy` | string | `Redirect` | How to handle plain HTTP: `Allow`, `Redirect`, or `None` |
+| `route.tls.certificate` | string | `""` | PEM-encoded TLS certificate (leave empty to use the cluster default) |
+| `route.tls.key` | string | `""` | PEM-encoded TLS private key |
+| `route.tls.caCertificate` | string | `""` | PEM-encoded CA certificate |
+| `route.tls.destinationCACertificate` | string | `""` | CA certificate for backend validation (`reencrypt` only) |
+| `route.wildcardPolicy` | string | `None` | Wildcard policy for the Route (`None` or `Subdomain`) |
 | `mountSecret.enabled` | bool | `false` | Mount decoded secret to pod |
 | `mountSecret.name` | string | `config-secrets` | Name of the secret to mount |
 | `mountSecret.mountPath` | string | `/opt/apps/fabric/config-secrets` | Path to mount the secret |
 | `mountSecret.data` | object | See `values.yaml` | Data to mount as secret (see config, cp_files, idp_cert) |
 | `mountSecretB64enc.enabled` | bool | `false` | Mount base64-encoded secret to pod |
 | `mountSecretB64enc.name` | string | `mount-b64-secrets` | Name of the base64 secret to mount |
-| `mountSecretB64enc.mountPath` | string | `/opt/apps/fabric/config-secrets` | Path to mount the base64 secret |
+| `mountSecretB64enc.mountPath` | string | `/opt/apps/fabric/mount-b64-secrets` | Path to mount the base64 secret |
 | `mountSecretB64enc.data` | object | See `values.yaml` | Data to mount as base64 secret |
 | `secretsList` | list | `[]` | List of additional secrets (see structure in values.yaml) |
 | `initSecretsList` | list | `[]` | List of init container secrets (see structure in values.yaml) |
@@ -203,6 +204,8 @@ Use this mode for development environments or when running Fabric Studio. This m
 - `deploy.type: Deployment`
 - `container.replicas: 1`
 - `storage.pvc.enabled: true`
+
+> **Note:** The studio deployment is designed for single-instance use and does not support multiple replicas or high availability. For production deployments, use the StatefulSet configuration instead.
 
 #### 2. StatefulSet (Recommended for Production/Server)
 Use this mode for staging or production environments, or when running Fabric Server. This mode is designed for stateful workloads and high availability.
@@ -278,6 +281,7 @@ scaling:
 > **Note:**
 > - HPA requires resource requests and limits to be set for CPU in your container configuration.
 > - The chart will automatically create the necessary Kubernetes HPA resource when enabled.
+> - Autoscaling it possible for Fabric but may not be suitable for all workloads, please evaluate based on your specific use case and load patterns.
 
 ## Ingress
 To enable ingress, set `ingress.enabled: true` and configure the hostname:
@@ -421,6 +425,46 @@ spec:
                   number: 3213
 ```
 
+
+## OpenShift Support
+
+Set `openshift: true` to deploy Fabric on an OpenShift cluster. This single toggle activates the following adjustments:
+
+| Area | Standard Kubernetes | OpenShift (`openshift: true`) |
+|------|--------------------|-----------------------------|
+| Ingress | `Ingress` resource created | Suppressed; `Route` created instead |
+| TLS secret | `tls_secret` resource created | Suppressed; TLS handled by the Route |
+| Pod security context | `runAsUser`/`runAsGroup`/`fsGroup` set | Omitted (OpenShift assigns UIDs via SCC) |
+| Container security context | Not set | `capabilities.drop: ALL`, `runAsNonRoot: true`, `seccompProfile: RuntimeDefault` (compatible with `restricted-v2` SCC) |
+| NetworkPolicy (ingress) | Cluster-internal rules only | Additional rule allows traffic from `openshift-ingress` namespace (HAProxy router) |
+| Storage security context | Applied when `storage.securityContext: true` | Suppressed (SCC manages it) |
+
+**Minimal OpenShift values example:**
+```yaml
+openshift: true
+
+route:
+  host: fabric.apps.cluster.example.com   # leave empty to derive from ingress.host
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+```
+
+### OpenShift Route
+
+When `openshift: true`, the chart creates an OpenShift `Route` instead of a Kubernetes `Ingress`. The Route host and path are resolved with the same logic as the Ingress:
+
+- `route.host` set → used as-is
+- `route.host` empty + `ingress.subdomain: true` → `<namespace>.<ingress.host>`
+- `route.host` empty + `ingress.subdomain: "<string>"` → `<string>.<ingress.host>`
+- `route.host` empty + no subdomain → `ingress.host`
+
+- `route.path` set → used as-is
+- `route.path` empty + `ingress.path: true` → `/<namespace>`
+- `route.path` empty + `ingress.path: "<string>"` → `/<string>`
+- `route.path` empty + `ingress.path: false` → `/`
+
+TLS termination defaults to `edge` with HTTP→HTTPS redirect. To use a custom certificate, populate `route.tls.certificate` and `route.tls.key`; leave them empty to use the cluster's default wildcard certificate.
 
 ## Storage (Persistence)
 To enable persistent storage, configure the following:
