@@ -122,16 +122,6 @@ spec:
             imagePullPolicy: IfNotPresent
             image: {{ $container.image.url }}
             name: init-fabric
-            {{- if $openshift }}
-            securityContext:
-              allowPrivilegeEscalation: false
-              capabilities:
-                drop:
-                  - ALL
-              runAsNonRoot: true
-              seccompProfile:
-                type: RuntimeDefault
-            {{- end }}
             resources:
               limits:
                 memory: {{ $limits.memory | default "8Gi" }}
@@ -194,14 +184,6 @@ spec:
             - containerPort: 9100
             securityContext:
               allowPrivilegeEscalation: false
-              {{- if $openshift }}
-              capabilities:
-                drop:
-                  - ALL
-              runAsNonRoot: true
-              seccompProfile:
-                type: RuntimeDefault
-              {{- end }}
             resources:
               limits:
                 memory: {{ $limits.memory | default "8Gi" }}
@@ -259,7 +241,7 @@ spec:
               mountPath: {{ $mountSecretB64enc.mountPath }}
             {{- end }}
           terminationGracePeriodSeconds: 150
-          {{- if and $storage.securityContext (not $openshift) }}
+          {{- if $storage.securityContext }}
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000
