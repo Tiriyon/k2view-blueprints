@@ -9,6 +9,7 @@
 {{ $serviceAccountName := default (include "fabric.namespace" .) $serviceAccount.name }}
 {{ $storage := default dict .Values.storage }}
 {{ $pvc := default dict $storage.pvc }}
+{{ $emptyDir := default dict $storage.emptyDir }}
 {{ $container := default dict .Values.container }}
 {{ $container_labels := default (list) $container.labels }}
 {{ $resource_annotations := default (list) $container.annotations }}
@@ -129,6 +130,8 @@ spec:
                 memory: {{ $requests.memory | default "4Gi" }}
                 cpu: {{ $requests.cpu | default "1" }}
             env:
+            - name: HOME
+              value: /opt/apps/fabric
             - name: NAMESPACE
               value: {{ include "fabric.namespace" . }}
             # common secrets
@@ -199,6 +202,8 @@ spec:
                 memory: {{ $requests.memory | default "4Gi" }}
                 cpu: {{ $requests.cpu | default "1" }}
             env:
+            - name: HOME
+              value: /opt/apps/fabric
             - name: NAMESPACE
               value: {{ include "fabric.namespace" . }}
             {{- range $secret := $secretsList }}
@@ -263,7 +268,7 @@ spec:
               claimName: fabric-claim
             {{- else }}
             emptyDir:
-              sizeLimit: {{ $storage.emptyDir.sizeLimit | default "10Gi" }}
+              sizeLimit: {{ $emptyDir.sizeLimit | default "10Gi" }}
             {{- end }}
           - name: fabric-storage-private
             emptyDir:
