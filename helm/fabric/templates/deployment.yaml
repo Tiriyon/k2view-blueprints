@@ -263,7 +263,7 @@ spec:
           {{- end }}
           volumes:
           - name: fabric-storage
-            {{- if $pvc.enabled | default true }}
+            {{- if ne (toString $pvc.enabled) "false" }}
             persistentVolumeClaim:
               claimName: fabric-claim
             {{- else }}

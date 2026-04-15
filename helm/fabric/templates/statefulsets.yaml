@@ -60,6 +60,7 @@ spec:
     selector:
       matchLabels:
         app: fabric
+    {{- if ne (toString $pvc.enabled) "false" }}
     volumeClaimTemplates:
     - metadata:
         name: fabric-storage-private
@@ -71,6 +72,7 @@ spec:
         resources:
           requests:
             storage: {{ default "10Gi" $allocated_amount }}
+    {{- end }}
     template:
         metadata:
           labels: *id001
