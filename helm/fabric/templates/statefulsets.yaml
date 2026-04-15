@@ -1,4 +1,3 @@
-{{ $namespace := default dict .Values.namespace }}
 {{ $deploy := default dict .Values.deploy }}
 {{ $type := default "StatefulSet" $deploy.type }}
 {{ $global := default dict .Values.global }}
@@ -7,8 +6,9 @@
 {{ $global_annotations := default (list) $global.annotations }}
 {{ $annotations := default (list) .Values.annotations }}
 {{ $serviceAccount := default dict .Values.serviceAccount }}
-{{ $serviceAccountName := default .Release.Name (default $namespace.name $serviceAccount.name) }}
+{{ $serviceAccountName := default (include "fabric.namespace" .) $serviceAccount.name }}
 {{ $storage := default dict .Values.storage }}
+{{ $pvc := default dict $storage.pvc }}
 {{ $allocated_amount := default $storage.allocated_amount $storage.alocated_amount }} {{- /* for backward compatibility, fix spelling error */ -}}
 {{ $container := default dict .Values.container }}
 {{ $resource_annotations := default (list) $container.annotations }}
@@ -24,13 +24,14 @@
 {{ $livenessProbe := default dict $container.livenessProbe }}
 {{ $readinessProbe := default dict $container.readinessProbe }}
 {{ $startupProbe := default dict $container.startupProbe }}
+{{ $openshift := .Values.openshift | default false }}
 
 {{ if eq $type "StatefulSet" }}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: fabric-stateful-sets
-  namespace: {{ default .Release.Name $namespace.name }}
+  namespace: {{ include "fabric.namespace" . }}
   labels: &id001
     app: fabric
     {{- range $label := $labels }}
@@ -60,6 +61,7 @@ spec:
     selector:
       matchLabels:
         app: fabric
+    {{- if ne (toString $pvc.enabled) "false" }}
     volumeClaimTemplates:
     - metadata:
         name: fabric-storage-private
@@ -71,6 +73,7 @@ spec:
         resources:
           requests:
             storage: {{ default "10Gi" $allocated_amount }}
+    {{- end }}
     template:
         metadata:
           labels: *id001
@@ -83,6 +86,9 @@ spec:
           serviceAccountName: {{ $serviceAccountName }}
           {{- else if $serviceAccount.create | default false }}
           serviceAccountName: {{ $serviceAccountName }}-sa
+          {{- end }}
+          {{- if eq (toString $serviceAccount.automountServiceAccountToken) "false" }}
+          automountServiceAccountToken: false
           {{- end }}
           {{- if or (eq $affinity.type "affinity") (eq $affinity.type "anti-affinity") }}
           affinity:
@@ -125,7 +131,7 @@ spec:
                 cpu: {{ $requests.cpu | default "1" }}
             env:
             - name: SPACE_NAME
-              value: {{ default .Release.Name $namespace.name }}
+              value: {{ include "fabric.namespace" . }}
             # common secrets
             {{- range $secret := $secretsList }}
             {{- range $key, $value := $secret.data }}
@@ -187,7 +193,7 @@ spec:
                 cpu: {{ $requests.cpu | default "1" }}
             env:
             - name: SPACE_NAME
-              value: {{ default .Release.Name $namespace.name }}
+              value: {{ include "fabric.namespace" . }}
             {{- range $secret := $secretsList }}
             {{- range $key, $value := $secret.data }}
             {{- if not (empty $value) }}
@@ -235,7 +241,7 @@ spec:
               mountPath: {{ $mountSecretB64enc.mountPath }}
             {{- end }}
           terminationGracePeriodSeconds: 150
-          {{- if $storage.securityContext }}          
+          {{- if $storage.securityContext }}
           securityContext:
             runAsUser: 1000
             runAsGroup: 1000

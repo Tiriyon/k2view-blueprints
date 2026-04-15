@@ -1,4 +1,3 @@
-{{ $namespace := default dict .Values.namespace }}
 {{ $global := default dict .Values.global }}
 {{ $global_labels := default (list) $global.labels }}
 {{ $labels := default (list) .Values.labels }}
@@ -6,26 +5,27 @@
 {{ $annotations := default (list) .Values.annotations }}
 {{ $ingress := default dict .Values.ingress }}
 {{ $cert_manager := default dict $ingress.cert_manager }}
+{{ $openshift := .Values.openshift | default false }}
 {{ $path := "" }}
 {{ if kindIs "string" $ingress.path }}
   {{- $path = $ingress.path }}
 {{ else if and (kindIs "bool" $ingress.path) $ingress.path }}
-  {{- $path = default .Release.Name $namespace.name }}
+  {{- $path = include "fabric.namespace" . }}
 {{ end }}
 {{ $host := $ingress.host }}
 {{ if and (kindIs "string" $ingress.subdomain) $ingress.subdomain }}
   {{- $host = printf "%s.%s" $ingress.subdomain $ingress.host }}
 {{ else if and (kindIs "bool" $ingress.subdomain) $ingress.subdomain }}
-  {{- $subdomain := default .Release.Name $namespace.name }}
+  {{- $subdomain := include "fabric.namespace" . }}
   {{- $host = printf "%s.%s" $subdomain $ingress.host }}
 {{ end }}
 
-{{ if $ingress.enabled | default true }}
+{{ if and (not $openshift) ($ingress.enabled | default true) }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: fabric-ingress
-  namespace: {{ default .Release.Name $namespace.name }}
+  namespace: {{ include "fabric.namespace" . }}
   labels:
     app: fabric
     {{- range $label := $labels }}
