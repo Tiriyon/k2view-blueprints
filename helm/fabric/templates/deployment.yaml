@@ -257,8 +257,13 @@ spec:
           {{- end }}
           volumes:
           - name: fabric-storage
+            {{- if $pvc.enabled | default true }}
             persistentVolumeClaim:
               claimName: fabric-claim
+            {{- else }}
+            emptyDir:
+              sizeLimit: {{ $storage.emptyDir.sizeLimit | default "10Gi" }}
+            {{- end }}
           - name: fabric-storage-private
             emptyDir:
               sizeLimit: 10Gi

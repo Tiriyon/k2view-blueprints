@@ -67,6 +67,8 @@ service:
 storage:
   pvc:
     enabled: true  # Create PVC if true, else use ephemeral
+  emptyDir:
+    sizeLimit: 10Gi  # Used for fabric-storage when pvc.enabled is false
   securityContext: true
   class: managed
   allocated_amount: 10Gi
